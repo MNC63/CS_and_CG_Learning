@@ -2,6 +2,7 @@ import pygame
 import sys
 
 pygame.init()
+pygame.mixer.init()
 
 
 screen = pygame.display.set_mode((500,500))
@@ -11,47 +12,125 @@ BLUE_GRAY= (105, 157, 196)
 HARVEST_GOLD = (252, 194, 0)
 BLACK = (0,0,0)
 font = pygame.font.Font(None, 36)
-running = True
 
-text_1 = font.render("+", True, BLACK)
-text_2 = font.render("-", True, BLACK)
-text_3 = font.render("+", True, BLACK)
-text_4 = font.render("-", True, BLACK)
-text_5 = font.render("START", True, BLACK)
-text_6 = font.render("RESET", True, BLACK)
+#load alarm sound
+alarm_sound = pygame.mixer.Sound("Song_Rest _In_ Peace.mp3")
 
-while running :
+# Initial time settings (minutes and seconds)
+minutes = 0
+seconds = 0
+counting_down = False
+
+# Helper to render text centered in a rect
+def draw_text_center(text, font, color, surface, rect):
+    text_surf = font.render(text, True, color)
+    text_rect = text_surf.get_rect(center = rect.center)
+    surface.blit(text_surf, text_rect)
+
+# Rectangle for buttons
+BTN_MIN_PLUS = pygame.Rect(100, 50, 50, 50)
+BTN_MIN_MINUS = pygame.Rect(100, 150, 50, 50)
+BTN_SEC_PLUS = pygame.Rect(200, 50, 50, 50)
+BTN_SEC_MINUS = pygame.Rect(200, 150, 50, 50)
+BTN_START = pygame.Rect(300, 50, 150, 50)
+BTN_RESET = pygame.Rect(300, 150, 150, 50)
+
+clock = pygame.time.Clock()
+#custom events
+timer_event = pygame.USEREVENT + 1 # Custom event for timer tick
+alarm_stop_event = pygame.USEREVENT + 2 #stop alarm sound after 30 seconds
+
+
+while True :
     screen.fill(BLUE_GRAY)
+   
+    #Draw buttons
+    pygame.draw.rect(screen, HARVEST_GOLD, BTN_MIN_PLUS)
+    pygame.draw.rect(screen, HARVEST_GOLD, BTN_MIN_MINUS)
+    pygame.draw.rect(screen, HARVEST_GOLD, BTN_SEC_PLUS)
+    pygame.draw.rect(screen, HARVEST_GOLD, BTN_SEC_MINUS)
+    pygame.draw.rect(screen, HARVEST_GOLD, BTN_START)
+    pygame.draw.rect(screen, HARVEST_GOLD, BTN_RESET)
 
-    mouse_x, mouse_y = pygame.mouse.get_pos()
+    # Draw button labels
+    draw_text_center("+", font, BLACK, screen, BTN_MIN_PLUS)
+    draw_text_center("-", font, BLACK, screen, BTN_MIN_MINUS)
+    draw_text_center("+", font, BLACK, screen, BTN_SEC_PLUS)
+    draw_text_center("-", font, BLACK, screen, BTN_SEC_MINUS)
+    draw_text_center("Start", font, BLACK, screen, BTN_START)
+    draw_text_center("Reset", font, BLACK, screen, BTN_RESET)
+
+    #Draw the clock face
+    pygame.draw.circle(screen, BLACK, (150,320), 82)
+    pygame.draw.circle(screen, HARVEST_GOLD, (150,320), 80)
+    pygame.draw.circle(screen, BLACK, (350,320), 82)
+    pygame.draw.circle(screen, HARVEST_GOLD, (350,320), 80)
+
+    #Draw the clock lines
+    pygame.draw.circle(screen, BLACK, (350, 320), 5)
+    pygame.draw.line(screen, BLACK, (350,320), (350, 250))
     
-    pygame.draw.rect(screen,HARVEST_GOLD, (100, 50, 50,50))
-    pygame.draw.rect(screen,HARVEST_GOLD, (100, 200, 50,50))
-    pygame.draw.rect(screen,HARVEST_GOLD, (200, 50, 50,50))
-    pygame.draw.rect(screen,HARVEST_GOLD, (200, 200, 50,50))
-    pygame.draw.rect(screen,HARVEST_GOLD, (300, 50, 150,50))
-    pygame.draw.rect(screen,HARVEST_GOLD, (300, 50, 150,50))
-    pygame.draw.rect(screen,HARVEST_GOLD, (300, 150, 150,50))
 
-
-    screen.blit(text_1, (117, 60))
-    screen.blit(text_2, (120, 210))
-    screen.blit(text_3, (217, 60))
-    screen.blit(text_4, (220, 210))
-    screen.blit(text_5, (330, 65))
-    screen.blit(text_6, (330, 165))
-
-    # Draw the clock center
-    pygame.draw.circle(screen, BLACK, (250, 350), 72)
-    pygame.draw.circle(screen, HARVEST_GOLD, (250, 350), 70)
-
-    pygame.draw.rect(screen, BLACK, (48, 448, 404, 34))
-    pygame.draw.rect(screen, HARVEST_GOLD, (50, 450, 400, 30))
+    #Display the current time in MM:SS format
+    time_str = f"{minutes:02d}:{seconds:02d}"
+    time_text = font.render(time_str, True, BLACK)
+    time_rect = time_text.get_rect(center=(150,320))
+    screen.blit(time_text, time_rect)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            pygame.quit()
+            sys.exit()
+
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            mouse_pos = event.pos
+            if BTN_MIN_PLUS.collidepoint(mouse_pos) and not counting_down:
+                minutes = min(minutes +1, 90) # Limit max to 90 minutes
+            elif BTN_MIN_MINUS.collidepoint(mouse_pos) and not counting_down:
+                minutes = max(minutes - 1, 0)
+            elif BTN_SEC_PLUS.collidepoint(mouse_pos) and not counting_down:
+                if seconds == 59:
+                    if minutes <90:
+                        minutes += 1
+                        seconds = 0
+                    else:
+                        seconds = 59
+                else:
+                    seconds = min(seconds + 1, 59)
+            elif BTN_SEC_MINUS.collidepoint(mouse_pos) and not counting_down:
+                if seconds == 0:
+                    if minutes > 0:
+                        minutes -= 1
+                        seconds = 59
+                    else:
+                        seconds = 0
+                else: 
+                    seconds = max(seconds - 1, 0)
+            elif BTN_START.collidepoint(mouse_pos) and not counting_down:
+                if minutes > 0 or seconds > 0:
+                    counting_down = True
+                    pygame.time.set_timer(timer_event, 1000) # set timer to tick every second
+            elif BTN_RESET.collidepoint(mouse_pos):
+                counting_down = False
+                pygame.time.set_timer(timer_event, 0)
+                minutes, seconds = 0, 0
+        
+        elif event.type == timer_event and counting_down:
+            #count down logic
+            if seconds == 0:
+                if minutes == 0:
+                    counting_down = False
+                    pygame.time.set_timer(timer_event, 0)
+                    alarm_sound.play()
+                    pygame.time.set_timer(alarm_stop_event, 30000)
+                else:
+                    minutes -= 1
+                    seconds = 59
+            else:
+                seconds -= 1
+        elif event.type == alarm_stop_event:
+            alarm_sound.stop()
+            pygame.time.set_timer(alarm_stop_event, 0)
         
     pygame.display.flip()
-
-pygame.quit()
+    clock.tick(30)  # Limit to 30 FPS
