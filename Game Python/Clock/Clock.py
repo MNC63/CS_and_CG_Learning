@@ -1,5 +1,6 @@
 import pygame
 import sys
+import math
 
 pygame.init()
 pygame.mixer.init()
@@ -17,7 +18,7 @@ font = pygame.font.Font(None, 36)
 
 #load alarm sound
 total_seconds = 0
-alarm_on = False
+alarm_on = False 
 alarm_sound = pygame.mixer.Sound("Song_Rest _In_ Peace.mp3")
 
 # Initial time settings (minutes and seconds)
@@ -72,7 +73,13 @@ while True :
 
     #Draw the clock lines
     pygame.draw.circle(screen, BLACK, (350, 320), 5)
-    pygame.draw.line(screen, BLACK, (350,320), (350, 250))
+
+    angle = -math.pi/2 + 2 * math.pi * (seconds % 60) / 60 # -90 degrees + fraction of circle
+    hand_length = 70
+    end_x = 350 + hand_length * math.cos(angle)
+    end_y = 320 + hand_length * math.sin(angle)
+
+    pygame.draw.line(screen, BLACK, (350, 320), (end_x, end_y), 5)
 
     #calculate current total seconds left
     current_time = minutes * 60 +seconds
